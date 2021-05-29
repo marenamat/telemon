@@ -1,5 +1,5 @@
-# Private files
-telegram.token
+# Config files
+*.
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
