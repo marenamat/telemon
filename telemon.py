@@ -67,7 +67,7 @@ class TelegramBot:
         sstr = config.get('Telegram', 'subs', fallback=None)
         if sstr is not None:
             for s in sstr.split(','):
-                self.subscribe(chat_id=s)
+                self.subscribe(chat_id=int(s))
 
     def subscribe(self, chat_id):
         self.subs.append(TelegramSub(self, chat_id))
