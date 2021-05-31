@@ -122,16 +122,18 @@ class TelegramBot:
     def cmd_update(self, u, c):
         try:
             cur = self.tryshell(c, ["git", "rev-parse", "HEAD"])
+            curtext = self.tryshell(c, ["git", "show", "-q", "--oneline"])
             self.tryshell(c, ["git", "pull"])
             new = self.tryshell(c, ["git", "rev-parse", "HEAD"])
+            newtext = self.tryshell(c, ["git", "show", "-q", "--oneline"])
         except TryRunException as e:
             c.bot.send_message(chat_id=u.effective_chat.id, text=f"Failed to update git: {str(e)}")
             return
 
         if cur == new:
-            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git up to date at {cur}")
+            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git up to date at {cur} ({curtext})")
         else:
-            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git updated from {cur} to {new}")
+            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git updated from {cur} ({curtext}) to {new} ({curtext})")
 
     def cmd_reload(self, u, c):
         self.tryshell(c, ["/bin/bash", "reloader.sh", str(os.getpid())])
