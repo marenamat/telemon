@@ -131,9 +131,9 @@ class TelegramBot:
             return
 
         if cur == new:
-            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git up to date at {cur} ({curtext})")
+            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git up to date at {curtext}")
         else:
-            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git updated from {cur} ({curtext}) to {new} ({curtext})")
+            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git updated from {curtext} to {newtext}")
 
     def cmd_reload(self, u, c):
         self.tryshell(c, ["/bin/bash", "reloader.sh", str(os.getpid())])
