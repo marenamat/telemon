@@ -3,6 +3,7 @@
 import configparser
 import datetime
 import logging
+import os
 import sys
 import socket
 import subprocess
@@ -16,8 +17,6 @@ try:
 except Exception as e:
     print(f"Couldn\'t load config: {str(e)}")
     sys.exit(2)
-
-logging.info("wat")
 
 class Status:
     def __init__(self):
@@ -135,7 +134,8 @@ class TelegramBot:
             c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git updated from {cur} to {new}")
 
     def cmd_reload(self, u, c):
-        subprocess.Popen(["python3", "telemon.py"])
+        self.tryshell(c, ["/bin/bash", "reloader.sh", str(os.getpid())])
+        self.updater.stop()
         sys.exit(0)
 
     def msg_echo(self, u, c):
