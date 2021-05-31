@@ -5,6 +5,7 @@ import datetime
 import logging
 import sys
 import socket
+import subprocess
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -48,6 +49,15 @@ Last update:\t{self.last_update}"""
     def stop(self):
         self.status_updater.schedule_removal()
 
+class TryRunException(Exception):
+    def __init__(self, cmd, code, stderr):
+        self.cmd = cmd
+        self.code = code
+        self.stderr = stderr
+
+    def __str__(self):
+        return f"Running command `{' '.join(self.cmd)}` failed with code {self.code}: {self.stderr}"
+
 class TelegramBot:
     def __init__(self, config, name):
         self.name = name
@@ -58,13 +68,15 @@ class TelegramBot:
         self.updater.dispatcher.add_handler(CommandHandler('start', self.cmd_start))
         self.updater.dispatcher.add_handler(CommandHandler('subscribe', self.cmd_subscribe))
         self.updater.dispatcher.add_handler(CommandHandler('unsubscribe', self.cmd_unsubscribe))
+        self.updater.dispatcher.add_handler(CommandHandler('update', self.cmd_update))
+        self.updater.dispatcher.add_handler(CommandHandler('reload', self.cmd_reload))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.msg_echo))
 
         logging.info(f'Telegram bot startup')
 
         self.subs = []
         sstr = config.get('Telegram', 'subs', fallback=None)
-        if sstr is not None:
+        if sstr is not None and sstr != "":
             for s in sstr.split(','):
                 self.subscribe(chat_id=int(s))
 
@@ -100,6 +112,31 @@ class TelegramBot:
                 return
 
         c.bot.send_message(chat_id=u.effective_chat.id, text=f"You have not been subscribed yet.")
+
+    def tryshell(self, c, cmd):
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if p.returncode != 0:
+            raise TryRunException(cmd, p.returncode, p.stderr)
+
+        return p.stdout
+
+    def cmd_update(self, u, c):
+        try:
+            cur = self.tryshell(c, ["git", "rev-parse", "HEAD"])
+            self.tryshell(c, ["git", "pull"])
+            new = self.tryshell(c, ["git", "rev-parse", "HEAD"])
+        except TryRunException as e:
+            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Failed to update git: {str(e)}")
+            return
+
+        if cur == new:
+            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git up to date at {cur}")
+        else:
+            c.bot.send_message(chat_id=u.effective_chat.id, text=f"Git updated from {cur} to {new}")
+
+    def cmd_reload(self, u, c):
+        subprocess.Popen(["python3", "telemon.py"])
+        sys.exit(0)
 
     def msg_echo(self, u, c):
         c.bot.send_message(chat_id=u.effective_chat.id, text=f"You wrote: {u.message.text}")
