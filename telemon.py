@@ -43,12 +43,10 @@ Subscribed:\t{self.subscribed_at}
 Last update:\t{self.last_update}"""
 
     def status_update(self, c):
-        logging.info("in1")
         self.last_update = datetime.datetime.now()
-        logging.info("in2")
         c.bot.edit_message_text(text=self.status_msg_text(), chat_id=self.chat_id, message_id=self.status_msg.message_id)
-#        self.status_msg = c.bot.send_message(chat_id=self.chat_id, text=self.status_msg_text())
-        logging.info("in3")
+    def stop(self):
+        self.status_updater.schedule_removal()
 
 class TelegramBot:
     def __init__(self, config, name):
@@ -59,6 +57,7 @@ class TelegramBot:
 
         self.updater.dispatcher.add_handler(CommandHandler('start', self.cmd_start))
         self.updater.dispatcher.add_handler(CommandHandler('subscribe', self.cmd_subscribe))
+        self.updater.dispatcher.add_handler(CommandHandler('unsubscribe', self.cmd_unsubscribe))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.msg_echo))
 
         logging.info(f'Telegram bot startup')
@@ -71,6 +70,10 @@ class TelegramBot:
 
     def subscribe(self, chat_id):
         self.subs.append(TelegramSub(self, chat_id))
+
+    def unsubscribe(self, ts):
+        self.subs.remove(ts)
+        ts.stop()
 
     def run(self):
         self.updater.start_polling()
@@ -87,6 +90,16 @@ class TelegramBot:
 
         self.subscribe(u.effective_chat.id)
         self.update_config()
+
+    def cmd_unsubscribe(self, u, c):
+        for s in self.subs:
+            if s.chat_id == u.effective_chat.id:
+                self.unsubscribe(s)
+                c.bot.send_message(chat_id=u.effective_chat.id, text=f"You have been unsubscribed.")
+                self.update_config()
+                return
+
+        c.bot.send_message(chat_id=u.effective_chat.id, text=f"You have not been subscribed yet.")
 
     def msg_echo(self, u, c):
         c.bot.send_message(chat_id=u.effective_chat.id, text=f"You wrote: {u.message.text}")
