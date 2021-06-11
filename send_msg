@@ -1,3 +1,5 @@
 #!/bin/sh
 
-echo $@ > $(mktemp /root/telemon/new/msg-XXXXXXXXXXXX.txt)
+DIR=$(dirname $(readlink -f $0))
+
+echo $@ > $(mktemp ${DIR}/upload/new/msg-XXXXXXXXXXXX.txt)
