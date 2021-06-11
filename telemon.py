@@ -8,6 +8,8 @@ import sys
 import socket
 import subprocess
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -17,6 +19,44 @@ try:
 except Exception as e:
     print(f"Couldn\'t load config: {str(e)}")
     sys.exit(2)
+
+class SendQueue(FileSystemEventHandler):
+    def __init__(self, dir, bot):
+        super().__init__()
+
+        self.dir = dir
+        self.bot = bot
+
+        self.observer = Observer()
+        self.observer.schedule(self, self.dir + "/new", recursive=False)
+        self.observer.start()
+
+    def on_created(self, ev):
+        p = ev.src_path.split("/")
+        f = p.pop()
+        pn = p.pop()
+        if pn != "new":
+            logging.error(f"Got a strange new file notification: {ev.src_path}")
+            return
+
+        p.append("old")
+        p.append(f)
+
+        nf = "/".join(p)
+
+        ps = f.split(".")
+        if len(ps) != 2:
+            logging.error(f"Strange filename: {ev.src_path}")
+            return
+
+        fobj = open(ev.src_path, "r")
+
+        if ps[1] == "txt":
+            self.bot.send_msg(fobj.read())
+            os.rename(ev.src_path, nf)
+            return
+
+        logging.error(f"Unknown file type: {ev.src_path}")
 
 class Status:
     def __init__(self):
@@ -47,6 +87,9 @@ Last update:\t{self.last_update}"""
         c.bot.edit_message_text(text=self.status_msg_text(), chat_id=self.chat_id, message_id=self.status_msg.message_id)
     def stop(self):
         self.status_updater.schedule_removal()
+
+    def send_msg(self, msg):
+        self.tbot.updater.bot.send_message(chat_id=self.chat_id, text=msg)
 
 class TryRunException(Exception):
     def __init__(self, cmd, code, stderr):
@@ -80,6 +123,8 @@ class TelegramBot:
         if sstr is not None and sstr != "":
             for s in sstr.split(','):
                 self.subscribe(chat_id=int(s))
+
+        self.sq = SendQueue(dir=config['SendQueue']['dir'], bot=self)
 
     def subscribe(self, chat_id):
         self.subs.append(TelegramSub(self, chat_id))
@@ -140,6 +185,8 @@ class TelegramBot:
     def cmd_reload(self, u, c):
         self.tryshell(c, ["/bin/bash", "reloader.sh", str(os.getpid())])
         self.updater.stop()
+        self.sq.observer.stop()
+        self.sq.observer.join()
         sys.exit(0)
 
     def cmd_reply(self, u, c):
@@ -150,6 +197,10 @@ class TelegramBot:
 
     def msg_echo(self, u, c):
         c.bot.send_message(chat_id=u.effective_chat.id, text=f"You wrote: {u.message.text}")
+
+    def send_msg(self, msg):
+        for s in self.subs:
+            s.send_msg(msg)
 
     def update_config(self):
         self.config['Telegram']['subs'] = ','.join(map(lambda s: str(s.chat_id), self.subs))
