@@ -3,7 +3,7 @@
 DIR=$(dirname $(readlink -f $0))
 mkdir -p ${DIR}/upload/tmp
 
-FN=$(msg-d$(date +%s)-p$$-r${RANDOM}.txt)
+FN=msg-d$(date +%s)-p$$-r${RANDOM}.txt
 echo $@ > ${DIR}/upload/tmp/${FN}
 
 mv ${DIR}/upload/tmp/${FN} ${DIR}/upload/new/${FN}
