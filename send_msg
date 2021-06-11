@@ -1,0 +1,3 @@
+#!/bin/sh
+
+echo $@ > $(mktemp /root/telemon/new/msg-XXXXXXXXXXXX.txt)
