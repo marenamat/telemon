@@ -63,7 +63,7 @@ class SendQueue(FileSystemEventHandler):
 
         if ps[1] == "jpg":
             logging.info(f"Sending image: {ev.src_path}")
-            self.bot.send_image(open(ev.src_path, "rb"))
+            self.bot.send_photo(open(ev.src_path, "rb"))
             logging.info(f"Image sent: {ev.src_path}")
             os.rename(ev.src_path, nf)
             return
@@ -106,7 +106,7 @@ Last update:\t{self.last_update}"""
     def send_video(self, video):
         self.tbot.updater.bot.send_video(chat_id=self.chat_id, video=video)
 
-    def send_image(self, image):
+    def send_photo(self, image):
         self.tbot.updater.bot.send_photo(chat_id=self.chat_id, photo=image)
 
 class TryRunException(Exception):
