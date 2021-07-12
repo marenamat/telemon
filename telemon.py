@@ -61,6 +61,13 @@ class SendQueue(FileSystemEventHandler):
             os.rename(ev.src_path, nf)
             return
 
+        if ps[1] == "jpg":
+            logging.info(f"Sending image: {ev.src_path}")
+            self.bot.send_image(open(ev.src_path, "rb"))
+            logging.info(f"Image sent: {ev.src_path}")
+            os.rename(ev.src_path, nf)
+            return
+
         logging.error(f"Unknown file type: {ev.src_path}")
 
 class Status:
@@ -98,6 +105,9 @@ Last update:\t{self.last_update}"""
 
     def send_video(self, video):
         self.tbot.updater.bot.send_video(chat_id=self.chat_id, video=video)
+
+    def send_image(self, image):
+        self.tbot.updater.bot.send_photo(chat_id=self.chat_id, photo=image)
 
 class TryRunException(Exception):
     def __init__(self, cmd, code, stderr):
@@ -213,6 +223,10 @@ class TelegramBot:
     def send_video(self, video):
         for s in self.subs:
             s.send_video(video)
+
+    def send_photo(self, image):
+        for s in self.subs:
+            s.send_photo(image)
 
     def update_config(self):
         self.config['Telegram']['subs'] = ','.join(map(lambda s: str(s.chat_id), self.subs))
