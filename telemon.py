@@ -131,6 +131,7 @@ class TelegramBot:
         self.updater.dispatcher.add_handler(CommandHandler('update', self.cmd_update))
         self.updater.dispatcher.add_handler(CommandHandler('reload', self.cmd_reload))
         self.updater.dispatcher.add_handler(CommandHandler('reply', self.cmd_reply))
+        self.updater.dispatcher.add_handler(CommandHandler('vpnrestart', self.cmd_vpnrestart))
 
         self.updater.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.msg_echo))
 
@@ -212,6 +213,12 @@ class TelegramBot:
             c.bot.send_message(chat_id=u.effective_chat.id, reply_to_message_id=u.message.reply_to_message.message_id, text=f"Reply test response")
         else:
             c.bot.send_message(chat_id=u.effective_chat.id, text=f"Error: Not a reply")
+
+    def cmd_vpnrestart(self, u, c):
+        stop = self.tryshell(c, ["/etc/init.d/openvpn", "stop"])
+        c.bot.send_message(chat_id=u.effective_chat.id, text=f"Stop: {stop}")
+        start = self.tryshell(c, ["/etc/init.d/openvpn", "start"])
+        c.bot.send_message(chat_id=u.effective_chat.id, text=f"Start: {start}")
 
     def msg_echo(self, u, c):
         c.bot.send_message(chat_id=u.effective_chat.id, text=f"You wrote: {u.message.text}")
